@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tagihan Listrik & Biaya Tambahan Kontrakan</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Inter:wght@400;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .receipt-font {
+            font-family: 'Courier Prime', monospace;
+        }
+
+        /* -------------------------------------------------------------
+           STYLING KHUSUS CETAK / SAVE PDF (PASTI TIDAK TERPOTONG)
+        ------------------------------------------------------------- */
+        @media print {
+            @page {
+                size: A4 landscape;
+                margin: 6mm;
+            }
+            body {
+                background: white !important;
+                color: black !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-container {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            
+            /* Paksa tabel muat 100% tanpa scroll horizontal */
+            .table-wrapper {
+                overflow: visible !important;
+                width: 100% !important;
+            }
+            table {
+                width: 100% !important;
+                table-layout: fixed !important;
+                font-size: 9.5px !important;
+            }
+            th, td {
+                padding: 2px 3px !important;
+                word-wrap: break-word !important;
+                overflow: hidden !important;
+            }
+
+            .print-bottom-layout {
+                display: flex !important;
+                flex-direction: row !important;
+                justify-content: space-between !important;
+                align-items: flex-start !important;
+                margin-top: 8px !important;
+            }
+            .receipt-side-print {
+                width: 210px !important;
+                max-width: 210px !important;
+            }
+            .struk-img-print {
+                max-width: 100% !important;
+                height: auto !important;
+                max-height: 290px !important;
+                object-fit: contain !important;
+            }
+        }
+    </style>
+</head>
+<body class="p-3 md:p-6">
+
+    <div class="max-w-[1300px] mx-auto bg-white p-4 md:p-6 rounded-xl shadow-lg print-container">
+        
+        <!-- HEADER KONTROL (TIDAK DICETAK) -->
+        <div class="no-print bg-slate-800 text-white p-4 rounded-lg mb-6 shadow">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-xl font-bold flex items-center gap-2">
+                        ⚡ Kalkulator Tagihan Listrik Kontrakan
+                    </h1>
+                    <p class="text-xs text-slate-300">Layout PDF Landscape presisi 100% (bebas terpotong)</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="resetDefaultData()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded shadow transition">
+                        🔄 Data Sesuai Foto
+                    </button>
+                    <button onclick="addNewRow()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded shadow transition">
+                        ➕ Tambah Penghuni
+                    </button>
+                    <button onclick="window.print()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded shadow transition flex items-center gap-1">
+                        🖨️ Cetak / Simpan PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- FORM BIAYA DASAR -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t border-slate-700">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Bulan & Tahun Tagihan</label>
+                    <input type="text" id="bulanTahun" value="Oktober 2026" oninput="calculateAll()" class="w-full bg-slate-700 text-white text-sm px-3 py-1.5 rounded border border-slate-600 focus:outline-none focus:border-emerald-400">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Total Biaya Listrik PLN (Rp)</label>
+                    <input type="number" id="totalBiayaListrikPLN" value="408369" oninput="calculateAll()" class="w-full bg-slate-700 font-bold text-emerald-400 text-sm px-3 py-1.5 rounded border border-slate-600 focus:outline-none focus:border-emerald-400">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Biaya Sampah / Kamar (Rp)</label>
+                    <input type="number" id="biayaSampahPerKamar" value="15000" oninput="calculateAll()" class="w-full bg-slate-700 text-white text-sm px-3 py-1.5 rounded border border-slate-600 focus:outline-none focus:border-emerald-400">
+                </div>
+            </div>
+
+            <!-- DETAIL BUKTI STRUK PLN / UPLOAD FOTO (EXPANDABLE) -->
+            <details class="mt-3 text-xs text-slate-300 cursor-pointer">
+                <summary class="font-semibold text-emerald-400 hover:underline">📷 Edit / Upload Foto Struk PLN (JPG/PNG / Link G-Drive)</summary>
+                
+                <div class="mt-3 p-3 bg-slate-900 rounded-lg border border-slate-700 cursor-default space-y-4">
+                    <div class="flex items-center gap-4">
+                        <span class="font-semibold text-white">Tipe Bukti Struk:</span>
+                        <label class="inline-flex items-center cursor-pointer gap-1">
+                            <input type="radio" name="strukType" value="image" checked onchange="toggleStrukType()" class="text-emerald-500">
+                            <span>Foto / Gambar Upload</span>
+                        </label>
+                        <label class="inline-flex items-center cursor-pointer gap-1">
+                            <input type="radio" name="strukType" value="digital" onchange="toggleStrukType()" class="text-emerald-500">
+                            <span>Struk Digital (Teks Manual)</span>
+                        </label>
+                    </div>
+
+                    <div id="imageInputSection" class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-slate-800">
+                        <div>
+                            <label class="block mb-1 text-slate-300 font-semibold">1. Upload Foto Struk (JPG/PNG):</label>
+                            <input type="file" id="strukFileInput" accept="image/*" onchange="handleFileUpload(event)" class="w-full bg-slate-800 text-slate-200 p-1 rounded border border-slate-700 text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-emerald-600 file:text-white file:text-xs">
+                        </div>
+                        <div>
+                            <label class="block mb-1 text-slate-300 font-semibold">2. Atau Tempel Link Gambar / G-Drive:</label>
+                            <input type="text" id="strukUrlInput" placeholder="https://..." oninput="handleUrlInput(this.value)" class="w-full bg-slate-800 text-white p-1.5 rounded border border-slate-700 text-xs">
+                        </div>
+                    </div>
+
+                    <div id="digitalInputSection" class="hidden grid grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-slate-800">
+                        <div>
+                            <label class="block mb-1">IDPEL:</label>
+                            <input type="text" id="strukIdpel" value="544300110334" oninput="updateStrukView()" class="w-full bg-slate-800 text-white p-1 rounded border border-slate-700 text-xs">
+                        </div>
+                        <div>
+                            <label class="block mb-1">Nama PLN:</label>
+                            <input type="text" id="strukNama" value="SUHARTI" oninput="updateStrukView()" class="w-full bg-slate-800 text-white p-1 rounded border border-slate-700 text-xs">
+                        </div>
+                        <div>
+                            <label class="block mb-1">Tarif / Daya:</label>
+                            <input type="text" id="strukTarif" value="R1 / 1300VA" oninput="updateStrukView()" class="w-full bg-slate-800 text-white p-1 rounded border border-slate-700 text-xs">
+                        </div>
+                        <div>
+                            <label class="block mb-1">Bulan/Tahun Struk:</label>
+                            <input type="text" id="strukBulan" value="NOV26" oninput="updateStrukView()" class="w-full bg-slate-800 text-white p-1 rounded border border-slate-700 text-xs">
+                        </div>
+                        <div>
+                            <label class="block mb-1">Stand Meter:</label>
+                            <input type="text" id="strukMeter" value="00015570-00015843" oninput="updateStrukView()" class="w-full bg-slate-800 text-white p-1 rounded border border-slate-700 text-xs">
+                        </div>
+                        <div>
+                            <label class="block mb-1">Admin Bank (Rp):</label>
+                            <input type="number" id="strukAdmin" value="4500" oninput="updateStrukView()" class="w-full bg-slate-800 text-white p-1 rounded border border-slate-700 text-xs">
+                        </div>
+                        <div>
+                            <label class="block mb-1">No Ref:</label>
+                            <input type="text" id="strukNoref" value="2MID21025FE365AA0E3C6EA1E4ABA665" oninput="updateStrukView()" class="w-full bg-slate-800 text-white p-1 rounded border border-slate-700 text-xs">
+                        </div>
+                        <div>
+                            <label class="block mb-1">Bank / Tanggal Bayar:</label>
+                            <input type="text" id="strukBank" value="BSI - A3 | 03-11-2026 17:03:22/CA" oninput="updateStrukView()" class="w-full bg-slate-800 text-white p-1 rounded border border-slate-700 text-xs">
+                        </div>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <!-- LAYOUT ATAS: TABEL REKAPITULASI LEBAR PENUH -->
+        <div class="w-full">
+            <!-- JUDUL RESMI -->
+            <div class="text-center mb-2">
+                <h2 class="text-xl md:text-2xl font-black uppercase tracking-wide text-black border-b-2 border-black inline-block pb-0.5">
+                    TAGIHAN LISTRIK DAN BIAYA TAMBAHAN
+                </h2>
+                <div class="text-left font-bold text-xs md:text-sm mt-1 flex items-center gap-2">
+                    <span>BULAN :</span>
+                    <span id="displayBulan" class="bg-yellow-300 px-2.5 py-0.5 rounded font-black text-black">Oktober 2026</span>
+                </div>
+            </div>
+
+            <!-- TABEL DATA UTAMA -->
+            <div class="table-wrapper overflow-x-auto">
+                <table class="w-full border-collapse border-2 border-black text-xs">
+                    <thead>
+                        <tr class="bg-emerald-500 text-black font-bold text-center border-b-2 border-black">
+                            <th class="border border-black p-1 w-[4%]">No</th>
+                            <th class="border border-black p-1 w-[12%]">NAMA</th>
+                            <th class="border border-black p-1 bg-yellow-300 w-[6%]">JML ORG</th>
+                            <th class="border border-black p-1 w-[10%]">LISTRIK</th>
+                            <th class="border border-black p-1 w-[8%]">Exsouse</th>
+                            <th class="border border-black p-1 w-[11%]">Water Cooker Dispenser</th>
+                            <th class="border border-black p-1 w-[7%]">TV</th>
+                            <th class="border border-black p-1 w-[8%]">Rice Cooker</th>
+                            <th class="border border-black p-1 w-[9%]">COOL CASE</th>
+                            <th class="border border-black p-1 w-[9%]">SAMPAH</th>
+                            <th class="border border-black p-1 w-[10%]">TOTAL</th>
+                            <th class="border border-black p-1 w-[10%]">PEMBULATAN</th>
+                            <th class="border border-black p-1 w-[30px] no-print">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Data Kamar di-generate JS -->
+                    </tbody>
+                    <tfoot>
+                        <!-- BARIS JUMLAH RINCIAN -->
+                        <tr class="font-bold text-right bg-emerald-200 border-t-2 border-black">
+                            <td colspan="3" class="border border-black p-1 text-center">JUMLAH</td>
+                            <td id="sumListrik" class="border border-black p-1">Rp 0</td>
+                            <td id="sumExsouse" class="border border-black p-1">Rp 0</td>
+                            <td id="sumWater" class="border border-black p-1">Rp 0</td>
+                            <td id="sumTv" class="border border-black p-1">Rp 0</td>
+                            <td id="sumRice" class="border border-black p-1">Rp 0</td>
+                            <td id="sumCoolcase" class="border border-black p-1">Rp 0</td>
+                            <td id="sumSampah" class="border border-black p-1">Rp 0</td>
+                            <td id="sumTotal" class="border border-black p-1">Rp 0</td>
+                            <td id="sumPembulatan" class="border border-black p-1 bg-yellow-200">Rp 0</td>
+                            <td class="border border-black p-1 no-print"></td>
+                        </tr>
+                        <!-- BARIS TOTAL PERALATAN -->
+                        <tr class="font-bold text-center bg-emerald-200 border-b-2 border-black">
+                            <td colspan="3" class="border border-black p-1"></td>
+                            <td colspan="6" id="sumTotalPeralatan" class="border border-black p-1 text-right font-semibold">Rp 0</td>
+                            <td colspan="4" class="border border-black p-1 bg-white border-none"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- LAYOUT BAWAH: RUMUS PERHITUNGAN (KIRI) + STRUK PEMBAYARAN PEPET (KANAN) -->
+        <div class="print-bottom-layout flex flex-col md:flex-row justify-between items-start gap-4 mt-3">
+            
+            <!-- BAGIAN KIRI: RINGKASAN RUMUS & TERIMA KASIH -->
+            <div class="flex-1 w-full">
+                <table class="border-2 border-black text-xs font-bold bg-white">
+                    <tr>
+                        <td class="p-1.5 border border-black bg-gray-50">Listrik Di Hitung Per Jiwa</td>
+                        <td class="p-1.5 border border-black text-right min-w-[120px]" id="displayPerJiwa">Rp 27.837</td>
+                    </tr>
+                    <tr class="bg-emerald-400 text-black">
+                        <td class="p-1.5 border border-black font-black">Total Biaya Listrik</td>
+                        <td class="p-1.5 border border-black text-right font-black text-xs md:text-sm bg-yellow-300" id="displayTotalPLN">Rp 408.369</td>
+                    </tr>
+                </table>
+
+                <div class="mt-4">
+                    <h3 class="text-lg md:text-xl font-black uppercase tracking-wider text-black">
+                        TERIMA KASIH
+                    </h3>
+                </div>
+
+                <div class="mt-3 font-bold text-[11px] md:text-xs text-black uppercase border-t border-dashed border-gray-400 pt-1.5 max-w-md">
+                    Note: MOHON LAPORKAN BILA ADA PENAMBAHAN PENGGUNAAN ALAT ALAT LISTRIK
+                </div>
+            </div>
+
+            <!-- BAGIAN KANAN: BUKTI FOTO STRUK PLN (PEPET KANAN) -->
+            <div class="receipt-side-print w-full md:w-56 flex-shrink-0 flex justify-end">
+                
+                <!-- 1. FOTO STRUK ASLI -->
+                <div id="receiptImageContainer" class="w-full border border-gray-300 p-1 bg-white shadow-sm rounded text-center">
+                    <img id="strukImagePreview" src="https://images.canvas.site/struk-pln-sample.jpg" alt="Bukti Struk PLN" class="struk-img-print w-full rounded object-contain max-h-[300px]">
+                </div>
+
+                <!-- 2. TEKS DIGITAL (JIKA OPSI DIGITAL DIPILIH) -->
+                <div id="receiptDigitalContainer" class="hidden receipt-box receipt-font bg-gray-50 border-2 border-gray-400 p-2 rounded text-slate-900 text-[9px] leading-tight shadow-sm w-full">
+                    <div class="text-center font-bold mb-1 pb-1 border-b border-dashed border-gray-400">
+                        STRUK PEMBAYARAN<br>TAGIHAN LISTRIK
+                    </div>
+                    
+                    <div class="space-y-0.5 mb-1.5">
+                        <div class="flex justify-between"><span>IDPEL</span><span>: <span id="rIdpel">544300110334</span></span></div>
+                        <div class="flex justify-between"><span>NAMA</span><span>: <span id="rNama">SUHARTI</span></span></div>
+                        <div class="flex justify-between"><span>TARIF/DAYA</span><span>: <span id="rTarif">R1/1300VA</span></span></div>
+                        <div class="flex justify-between"><span>BL/TH</span><span>: <span id="rBulan">NOV26</span></span></div>
+                        <div class="flex justify-between"><span>STAND METER</span><span>: <span id="rMeter">00015570-00015843</span></span></div>
+                        <div class="flex justify-between font-bold"><span>RP TAG PLN</span><span>: <span id="rRpTag">Rp.403.869</span></span></div>
+                        <div class="flex justify-between text-[8px] break-all"><span>NO REF</span><span>: <span id="rNoref">2MID21025FE365AA0E3C6EA1E4ABA665</span></span></div>
+                    </div>
+
+                    <div class="text-center text-[8px] my-1 px-1 py-0.5 bg-gray-200/60 rounded">
+                        PLN menyatakan struk ini sebagai bukti pembayaran yang sah.
+                    </div>
+
+                    <div class="space-y-0.5 my-1 pt-1 border-t border-dashed border-gray-400">
+                        <div class="flex justify-between"><span>ADMIN BANK</span><span>: <span id="rAdmin">Rp.4.500</span></span></div>
+                        <div class="flex justify-between font-bold"><span>TOTAL BAYAR</span><span>: <span id="rTotal">Rp.408.369</span></span></div>
+                    </div>
+
+                    <div class="text-center my-1.5 font-bold">
+                        TERIMA KASIH<br>
+                        <span id="rBankShort">BSI - A3</span>
+                    </div>
+
+                    <div class="text-[8px] text-center text-gray-600 mb-1">
+                        "Informasi Hubungi Call Center 123<br>Atau Hub PLN Terdekat :"<br>
+                        Download PLN Mobile
+                    </div>
+
+                    <div class="text-center border-t border-dashed border-gray-400 pt-1 text-[8px]">
+                        <div class="font-bold" id="rBankFull">PT BANK SYARIAH INDONESIA</div>
+                        <div id="rBankDetail">UC97/0226067353</div>
+                        <div id="rTanggal">03-11-2026 17:03:22/CA</div>
+                    </div>
+
+                    <div class="mt-1.5 pt-1 border-t border-dashed border-gray-400 space-y-0.5 text-[8.5px]">
+                        <div class="text-center font-bold mb-0.5">------ DETAIL CARA PEMBAYARAN ------</div>
+                        <div class="flex justify-between"><span>TOTAL TAGIHAN</span><span>: <span id="rDetailTagihan">Rp.408.369</span></span></div>
+                        <div class="flex justify-between"><span>TUNAI</span><span>: <span id="rTunai">Rp.408.369</span></span></div>
+                        <div class="flex justify-between"><span>NON TUNAI/KARTU</span><span>: Rp.0</span></div>
+                        <div class="flex justify-between"><span>VOUCHER</span><span>: Rp.0</span></div>
+                    </div>
+
+                    <div class="text-center font-bold mt-1 text-[9px]">
+                        -------- TERIMA KASIH --------
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        const defaultData = [
+            { nama: "CASWITO", org: 1, exsouse: 0, water: 0, tv: 0, rice: 0, coolcase: 0 },
+            { nama: "Amoy", org: 1, exsouse: 20000, water: 0, tv: 0, rice: 0, coolcase: 0 },
+            { nama: "MISRANTO", org: 1, exsouse: 0, water: 15000, tv: 10000, rice: 0, coolcase: 0 },
+            { nama: "FARUKI", org: 1, exsouse: 0, water: 15000, tv: 10000, rice: 0, coolcase: 0 },
+            { nama: "KRISTINE", org: 2, exsouse: 0, water: 0, tv: 0, rice: 0, coolcase: 0 },
+            { nama: "ANDES", org: 3, exsouse: 0, water: 0, tv: 10000, rice: 10000, coolcase: 30000 },
+            { nama: "Mimin", org: 1, exsouse: 0, water: 0, tv: 0, rice: 10000, coolcase: 0 },
+            { nama: "", org: 0, exsouse: 0, water: 0, tv: 0, rice: 0, coolcase: 0 }
+        ];
+
+        let tenantData = JSON.parse(JSON.stringify(defaultData));
+
+        function formatRupiah(number) {
+            if (isNaN(number) || number === 0) return "";
+            return "Rp " + Math.round(number).toLocaleString('id-ID');
+        }
+
+        function formatRupiahFull(number) {
+            return "Rp " + Math.round(number || 0).toLocaleString('id-ID');
+        }
+
+        function formatStrukRp(number) {
+            return "Rp." + Math.round(number || 0).toLocaleString('id-ID');
+        }
+
+        function pembulatanKeAtasRibuan(val) {
+            if (!val || val === 0) return 0;
+            return Math.ceil(val / 1000) * 1000;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById("tableBody");
+            tbody.innerHTML = "";
+
+            tenantData.forEach((item, index) => {
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-slate-50 transition border-b border-black text-center";
+                tr.innerHTML = `
+                    <td class="border border-black p-0.5 font-semibold">${index + 1}</td>
+                    <td class="border border-black p-0.5 text-left">
+                        <input type="text" value="${item.nama}" oninput="updateRowData(${index}, 'nama', this.value)" class="w-full bg-transparent px-1 font-semibold focus:bg-yellow-100 focus:outline-none">
+                    </td>
+                    <td class="border border-black p-0.5 bg-yellow-100">
+                        <input type="number" min="0" value="${item.org || ''}" oninput="updateRowData(${index}, 'org', parseInt(this.value)||0)" class="w-full bg-transparent text-center font-bold focus:outline-none">
+                    </td>
+                    <td class="border border-black p-0.5 font-semibold text-right" id="listrik_${index}">Rp 0</td>
+                    <td class="border border-black p-0.5 text-right">
+                        <input type="number" value="${item.exsouse || ''}" placeholder="0" oninput="updateRowData(${index}, 'exsouse', parseFloat(this.value)||0)" class="w-full bg-transparent text-right focus:bg-yellow-100 focus:outline-none">
+                    </td>
+                    <td class="border border-black p-0.5 text-right">
+                        <input type="number" value="${item.water || ''}" placeholder="0" oninput="updateRowData(${index}, 'water', parseFloat(this.value)||0)" class="w-full bg-transparent text-right focus:bg-yellow-100 focus:outline-none">
+                    </td>
+                    <td class="border border-black p-0.5 text-right">
+                        <input type="number" value="${item.tv || ''}" placeholder="0" oninput="updateRowData(${index}, 'tv', parseFloat(this.value)||0)" class="w-full bg-transparent text-right focus:bg-yellow-100 focus:outline-none">
+                    </td>
+                    <td class="border border-black p-0.5 text-right">
+                        <input type="number" value="${item.rice || ''}" placeholder="0" oninput="updateRowData(${index}, 'rice', parseFloat(this.value)||0)" class="w-full bg-transparent text-right focus:bg-yellow-100 focus:outline-none">
+                    </td>
+                    <td class="border border-black p-0.5 text-right">
+                        <input type="number" value="${item.coolcase || ''}" placeholder="0" oninput="updateRowData(${index}, 'coolcase', parseFloat(this.value)||0)" class="w-full bg-transparent text-right focus:bg-yellow-100 focus:outline-none">
+                    </td>
+                    <td class="border border-black p-0.5 font-semibold text-right" id="sampah_${index}">Rp 0</td>
+                    <td class="border border-black p-0.5 font-semibold text-right" id="total_${index}">Rp 0</td>
+                    <td class="border border-black p-0.5 font-bold text-right bg-yellow-50" id="pembulatan_${index}">Rp 0</td>
+                    <td class="border border-black p-0.5 no-print">
+                        <button onclick="deleteRow(${index})" class="text-red-600 hover:text-red-800 font-bold px-1">✕</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            calculateAll();
+        }
+
+        function updateRowData(index, field, value) {
+            tenantData[index][field] = value;
+            calculateAll();
+        }
+
+        function addNewRow() {
+            tenantData.push({ nama: "", org: 1, exsouse: 0, water: 0, tv: 0, rice: 0, coolcase: 0 });
+            renderTable();
+        }
+
+        function deleteRow(index) {
+            if (tenantData.length > 1) {
+                tenantData.splice(index, 1);
+                renderTable();
+            }
+        }
+
+        function resetDefaultData() {
+            tenantData = JSON.parse(JSON.stringify(defaultData));
+            document.getElementById("totalBiayaListrikPLN").value = 408369;
+            document.getElementById("biayaSampahPerKamar").value = 15000;
+            document.getElementById("bulanTahun").value = "Oktober 2026";
+            renderTable();
+        }
+
+        function calculateAll() {
+            const totalPLN = parseFloat(document.getElementById("totalBiayaListrikPLN").value) || 0;
+            const sampahPerKamar = parseFloat(document.getElementById("biayaSampahPerKamar").value) || 0;
+            const bulan = document.getElementById("bulanTahun").value;
+            
+            document.getElementById("displayBulan").innerText = bulan;
+
+            let totalBiayaAlat = 0;
+            let totalJiwa = 0;
+
+            let sumEx = 0, sumWa = 0, sumTvVal = 0, sumRi = 0, sumCool = 0;
+
+            tenantData.forEach(item => {
+                const alatKamar = (item.exsouse || 0) + (item.water || 0) + (item.tv || 0) + (item.rice || 0) + (item.coolcase || 0);
+                totalBiayaAlat += alatKamar;
+                totalJiwa += (item.org || 0);
+
+                sumEx += (item.exsouse || 0);
+                sumWa += (item.water || 0);
+                sumTvVal += (item.tv || 0);
+                sumRi += (item.rice || 0);
+                sumCool += (item.coolcase || 0);
+            });
+
+            const sisaListrikMurni = totalPLN - totalBiayaAlat;
+            const listrikPerJiwa = totalJiwa > 0 ? (sisaListrikMurni / totalJiwa) : 0;
+
+            document.getElementById("displayPerJiwa").innerText = formatRupiahFull(listrikPerJiwa);
+            document.getElementById("displayTotalPLN").innerText = formatRupiahFull(totalPLN);
+
+            let totalSampahAll = 0;
+            let totalBiayaKamarAll = 0;
+            let totalPembulatanAll = 0;
+            let totalListrikBarisAll = 0;
+
+            tenantData.forEach((item, i) => {
+                const jmlOrg = item.org || 0;
+                const biayaListrikKamar = jmlOrg * listrikPerJiwa;
+                const totalAlatKamar = (item.exsouse || 0) + (item.water || 0) + (item.tv || 0) + (item.rice || 0) + (item.coolcase || 0);
+                const biayaSampah = (item.nama.trim() !== "" || jmlOrg > 0) ? sampahPerKamar : 0;
+                
+                const totalMurni = biayaListrikKamar + totalAlatKamar + biayaSampah;
+                const totalBulat = pembulatanKeAtasRibuan(totalMurni);
+
+                totalListrikBarisAll += biayaListrikKamar;
+                totalSampahAll += biayaSampah;
+                totalBiayaKamarAll += totalMurni;
+                totalPembulatanAll += totalBulat;
+
+                document.getElementById(`listrik_${i}`).innerText = jmlOrg > 0 ? formatRupiahFull(biayaListrikKamar) : "";
+                document.getElementById(`sampah_${i}`).innerText = biayaSampah > 0 ? formatRupiahFull(biayaSampah) : "";
+                document.getElementById(`total_${i}`).innerText = totalMurni > 0 ? formatRupiahFull(totalMurni) : "Rp -";
+                document.getElementById(`pembulatan_${i}`).innerText = totalBulat > 0 ? formatRupiahFull(totalBulat) : "Rp -";
+            });
+
+            document.getElementById("sumListrik").innerText = formatRupiahFull(totalListrikBarisAll);
+            document.getElementById("sumExsouse").innerText = formatRupiah(sumEx);
+            document.getElementById("sumWater").innerText = formatRupiah(sumWa);
+            document.getElementById("sumTv").innerText = formatRupiah(sumTvVal);
+            document.getElementById("sumRice").innerText = formatRupiah(sumRi);
+            document.getElementById("sumCoolcase").innerText = formatRupiah(sumCool);
+            document.getElementById("sumSampah").innerText = formatRupiahFull(totalSampahAll);
+            document.getElementById("sumTotal").innerText = formatRupiahFull(totalBiayaKamarAll);
+            document.getElementById("sumPembulatan").innerText = formatRupiahFull(totalPembulatanAll);
+            document.getElementById("sumTotalPeralatan").innerText = formatRupiahFull(totalBiayaAlat);
+
+            updateStrukView();
+        }
+
+        function toggleStrukType() {
+            const selectedType = document.querySelector('input[name="strukType"]:checked').value;
+            const imgInput = document.getElementById("imageInputSection");
+            const digInput = document.getElementById("digitalInputSection");
+
+            const imgContainer = document.getElementById("receiptImageContainer");
+            const digContainer = document.getElementById("receiptDigitalContainer");
+
+            if (selectedType === "image") {
+                imgInput.classList.remove("hidden");
+                digInput.classList.add("hidden");
+                imgContainer.classList.remove("hidden");
+                digContainer.classList.add("hidden");
+            } else {
+                imgInput.classList.add("hidden");
+                digInput.classList.remove("hidden");
+                imgContainer.classList.add("hidden");
+                digContainer.classList.remove("hidden");
+            }
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById("strukImagePreview").src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function handleUrlInput(url) {
+            if (url.trim() !== "") {
+                document.getElementById("strukImagePreview").src = url;
+            }
+        }
+
+        function updateStrukView() {
+            const totalPLN = parseFloat(document.getElementById("totalBiayaListrikPLN").value) || 0;
+            const adminBank = parseFloat(document.getElementById("strukAdmin").value) || 0;
+            const rpTagPLN = totalPLN - adminBank;
+
+            document.getElementById("rIdpel").innerText = document.getElementById("strukIdpel").value;
+            document.getElementById("rNama").innerText = document.getElementById("strukNama").value;
+            document.getElementById("rTarif").innerText = document.getElementById("strukTarif").value;
+            document.getElementById("rBulan").innerText = document.getElementById("strukBulan").value;
+            document.getElementById("rMeter").innerText = document.getElementById("strukMeter").value;
+            document.getElementById("rNoref").innerText = document.getElementById("strukNoref").value;
+            
+            document.getElementById("rRpTag").innerText = formatStrukRp(rpTagPLN);
+            document.getElementById("rAdmin").innerText = formatStrukRp(adminBank);
+            document.getElementById("rTotal").innerText = formatStrukRp(totalPLN);
+            document.getElementById("rDetailTagihan").innerText = formatStrukRp(totalPLN);
+            document.getElementById("rTunai").innerText = formatStrukRp(totalPLN);
+
+            const bankInfo = document.getElementById("strukBank").value.split("|");
+            document.getElementById("rBankShort").innerText = bankInfo[0] || "BSI - A3";
+            document.getElementById("rTanggal").innerText = bankInfo[1] || "";
+        }
+
+        renderTable();
+    </script>
+</body>
+</html>
