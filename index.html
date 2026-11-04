@@ -18,13 +18,11 @@
             font-family: 'Courier Prime', monospace;
         }
 
-        /* -------------------------------------------------------------
-           STYLING KHUSUS CETAK / SAVE PDF (PASTI TIDAK TERPOTONG)
-        ------------------------------------------------------------- */
+        /* STYLING KHUSUS CETAK / SAVE PDF */
         @media print {
             @page {
                 size: A4 landscape;
-                margin: 6mm;
+                margin: 5mm;
             }
             body {
                 background: white !important;
@@ -45,8 +43,6 @@
                 box-shadow: none !important;
                 border: none !important;
             }
-            
-            /* Paksa tabel muat 100% tanpa scroll horizontal */
             .table-wrapper {
                 overflow: visible !important;
                 width: 100% !important;
@@ -60,6 +56,10 @@
                 padding: 2px 3px !important;
                 word-wrap: break-word !important;
                 overflow: hidden !important;
+            }
+            input {
+                border: none !important;
+                background: transparent !important;
             }
 
             .print-bottom-layout {
@@ -76,7 +76,7 @@
             .struk-img-print {
                 max-width: 100% !important;
                 height: auto !important;
-                max-height: 290px !important;
+                max-height: 280px !important;
                 object-fit: contain !important;
             }
         }
@@ -93,7 +93,7 @@
                     <h1 class="text-xl font-bold flex items-center gap-2">
                         ⚡ Kalkulator Tagihan Listrik Kontrakan
                     </h1>
-                    <p class="text-xs text-slate-300">Layout PDF Landscape presisi 100% (bebas terpotong)</p>
+                    <p class="text-xs text-slate-300">Biaya sampah dapat di-custom per kamar (bisa diedit di kolom tabel)</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <button onclick="resetDefaultData()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded shadow transition">
@@ -119,8 +119,8 @@
                     <input type="number" id="totalBiayaListrikPLN" value="408369" oninput="calculateAll()" class="w-full bg-slate-700 font-bold text-emerald-400 text-sm px-3 py-1.5 rounded border border-slate-600 focus:outline-none focus:border-emerald-400">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-slate-300 mb-1">Biaya Sampah / Kamar (Rp)</label>
-                    <input type="number" id="biayaSampahPerKamar" value="15000" oninput="calculateAll()" class="w-full bg-slate-700 text-white text-sm px-3 py-1.5 rounded border border-slate-600 focus:outline-none focus:border-emerald-400">
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Biaya Sampah Default (Rp)</label>
+                    <input type="number" id="biayaSampahPerKamar" value="15000" oninput="applyDefaultSampahAll()" class="w-full bg-slate-700 text-white text-sm px-3 py-1.5 rounded border border-slate-600 focus:outline-none focus:border-emerald-400" title="Ubah nilai ini untuk menerapkan biaya sampah default ke seluruh baris baru">
                 </div>
             </div>
 
@@ -217,7 +217,7 @@
                             <th class="border border-black p-1 w-[7%]">TV</th>
                             <th class="border border-black p-1 w-[8%]">Rice Cooker</th>
                             <th class="border border-black p-1 w-[9%]">COOL CASE</th>
-                            <th class="border border-black p-1 w-[9%]">SAMPAH</th>
+                            <th class="border border-black p-1 w-[9%] bg-emerald-300">SAMPAH</th>
                             <th class="border border-black p-1 w-[10%]">TOTAL</th>
                             <th class="border border-black p-1 w-[10%]">PEMBULATAN</th>
                             <th class="border border-black p-1 w-[30px] no-print">Aksi</th>
@@ -350,14 +350,14 @@
     <!-- JAVASCRIPT LOGIC -->
     <script>
         const defaultData = [
-            { nama: "CASWITO", org: 1, exsouse: 0, water: 0, tv: 0, rice: 0, coolcase: 0 },
-            { nama: "Amoy", org: 1, exsouse: 20000, water: 0, tv: 0, rice: 0, coolcase: 0 },
-            { nama: "MISRANTO", org: 1, exsouse: 0, water: 15000, tv: 10000, rice: 0, coolcase: 0 },
-            { nama: "FARUKI", org: 1, exsouse: 0, water: 15000, tv: 10000, rice: 0, coolcase: 0 },
-            { nama: "KRISTINE", org: 2, exsouse: 0, water: 0, tv: 0, rice: 0, coolcase: 0 },
-            { nama: "ANDES", org: 3, exsouse: 0, water: 0, tv: 10000, rice: 10000, coolcase: 30000 },
-            { nama: "Mimin", org: 1, exsouse: 0, water: 0, tv: 0, rice: 10000, coolcase: 0 },
-            { nama: "", org: 0, exsouse: 0, water: 0, tv: 0, rice: 0, coolcase: 0 }
+            { nama: "CASWITO", org: 1, exsouse: 0, water: 0, tv: 0, rice: 0, coolcase: 0, sampah: 15000 },
+            { nama: "Amoy", org: 1, exsouse: 20000, water: 0, tv: 0, rice: 0, coolcase: 0, sampah: 15000 },
+            { nama: "MISRANTO", org: 1, exsouse: 0, water: 15000, tv: 10000, rice: 0, coolcase: 0, sampah: 15000 },
+            { nama: "FARUKI", org: 1, exsouse: 0, water: 15000, tv: 10000, rice: 0, coolcase: 0, sampah: 15000 },
+            { nama: "KRISTINE", org: 2, exsouse: 0, water: 0, tv: 0, rice: 0, coolcase: 0, sampah: 15000 },
+            { nama: "ANDES", org: 3, exsouse: 0, water: 0, tv: 10000, rice: 10000, coolcase: 30000, sampah: 15000 },
+            { nama: "Mimin", org: 1, exsouse: 0, water: 0, tv: 0, rice: 10000, coolcase: 0, sampah: 15000 },
+            { nama: "", org: 0, exsouse: 0, water: 0, tv: 0, rice: 0, coolcase: 0, sampah: 0 }
         ];
 
         let tenantData = JSON.parse(JSON.stringify(defaultData));
@@ -411,7 +411,9 @@
                     <td class="border border-black p-0.5 text-right">
                         <input type="number" value="${item.coolcase || ''}" placeholder="0" oninput="updateRowData(${index}, 'coolcase', parseFloat(this.value)||0)" class="w-full bg-transparent text-right focus:bg-yellow-100 focus:outline-none">
                     </td>
-                    <td class="border border-black p-0.5 font-semibold text-right" id="sampah_${index}">Rp 0</td>
+                    <td class="border border-black p-0.5 text-right bg-emerald-50">
+                        <input type="number" value="${item.sampah || ''}" placeholder="0" oninput="updateRowData(${index}, 'sampah', parseFloat(this.value)||0)" class="w-full bg-transparent text-right font-semibold focus:bg-yellow-100 focus:outline-none">
+                    </td>
                     <td class="border border-black p-0.5 font-semibold text-right" id="total_${index}">Rp 0</td>
                     <td class="border border-black p-0.5 font-bold text-right bg-yellow-50" id="pembulatan_${index}">Rp 0</td>
                     <td class="border border-black p-0.5 no-print">
@@ -430,7 +432,8 @@
         }
 
         function addNewRow() {
-            tenantData.push({ nama: "", org: 1, exsouse: 0, water: 0, tv: 0, rice: 0, coolcase: 0 });
+            const defaultSampah = parseFloat(document.getElementById("biayaSampahPerKamar").value) || 0;
+            tenantData.push({ nama: "", org: 1, exsouse: 0, water: 0, tv: 0, rice: 0, coolcase: 0, sampah: defaultSampah });
             renderTable();
         }
 
@@ -439,6 +442,16 @@
                 tenantData.splice(index, 1);
                 renderTable();
             }
+        }
+
+        function applyDefaultSampahAll() {
+            const defVal = parseFloat(document.getElementById("biayaSampahPerKamar").value) || 0;
+            tenantData.forEach(item => {
+                if (item.nama.trim() !== "" || item.org > 0) {
+                    item.sampah = defVal;
+                }
+            });
+            renderTable();
         }
 
         function resetDefaultData() {
@@ -451,7 +464,6 @@
 
         function calculateAll() {
             const totalPLN = parseFloat(document.getElementById("totalBiayaListrikPLN").value) || 0;
-            const sampahPerKamar = parseFloat(document.getElementById("biayaSampahPerKamar").value) || 0;
             const bulan = document.getElementById("bulanTahun").value;
             
             document.getElementById("displayBulan").innerText = bulan;
@@ -488,7 +500,7 @@
                 const jmlOrg = item.org || 0;
                 const biayaListrikKamar = jmlOrg * listrikPerJiwa;
                 const totalAlatKamar = (item.exsouse || 0) + (item.water || 0) + (item.tv || 0) + (item.rice || 0) + (item.coolcase || 0);
-                const biayaSampah = (item.nama.trim() !== "" || jmlOrg > 0) ? sampahPerKamar : 0;
+                const biayaSampah = parseFloat(item.sampah) || 0;
                 
                 const totalMurni = biayaListrikKamar + totalAlatKamar + biayaSampah;
                 const totalBulat = pembulatanKeAtasRibuan(totalMurni);
@@ -499,7 +511,6 @@
                 totalPembulatanAll += totalBulat;
 
                 document.getElementById(`listrik_${i}`).innerText = jmlOrg > 0 ? formatRupiahFull(biayaListrikKamar) : "";
-                document.getElementById(`sampah_${i}`).innerText = biayaSampah > 0 ? formatRupiahFull(biayaSampah) : "";
                 document.getElementById(`total_${i}`).innerText = totalMurni > 0 ? formatRupiahFull(totalMurni) : "Rp -";
                 document.getElementById(`pembulatan_${i}`).innerText = totalBulat > 0 ? formatRupiahFull(totalBulat) : "Rp -";
             });
