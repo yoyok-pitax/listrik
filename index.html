@@ -3,526 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tagihan Listrik & Biaya Tambahan Kontrakan - DBU</title>
+    <title>Dapur Bunda Usti (DBU) - Aneka Kue & Bolu Lezat</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Inter:wght@400;600;700;800&display=swap');
-        
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .receipt-font { font-family: 'Courier Prime', monospace; }
-
-        @media print {
-            @page { size: A4 landscape; margin: 5mm; }
-            body {
-                background: white !important;
-                color: black !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-            .no-print { display: none !important; }
-            .print-container {
-                width: 100% !important; max-width: 100% !important;
-                margin: 0 !important; padding: 0 !important;
-                box-shadow: none !important; border: none !important;
-            }
-            .table-wrapper { overflow: visible !important; width: 100% !important; }
-            table { width: 100% !important; table-layout: fixed !important; font-size: 9.5px !important; }
-            th, td { padding: 2px 3px !important; word-wrap: break-word !important; overflow: hidden !important; }
-            input { border: none !important; background: transparent !important; }
-            .print-bottom-layout {
-                display: flex !important; flex-direction: row !important;
-                justify-content: space-between !important; align-items: flex-start !important;
-                margin-top: 8px !important;
-            }
-            .receipt-side-print { width: 210px !important; max-width: 210px !important; }
-            .struk-img-print { max-width: 100% !important; height: auto !important; max-height: 280px !important; object-fit: contain !important; }
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap');
+        body { font-family: 'Poppins', sans-serif; }
     </style>
 </head>
-<body class="p-2 md:p-6">
+<body class="bg-amber-50 text-slate-800">
 
-    <div class="max-w-[1300px] mx-auto bg-white p-3 md:p-6 rounded-xl shadow-lg print-container">
-        
-        <!-- HEADER KONTROL (TIDAK DICETAK) -->
-        <div class="no-print bg-slate-800 text-white p-3 md:p-4 rounded-lg mb-4 md:mb-6 shadow">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h1 class="text-base md:text-xl font-bold flex items-center gap-2">
-                        ⚡ Tagihan Listrik Kontrakan DBU
-                        <span id="cloudStatus" class="text-[10px] md:text-[11px] font-normal bg-slate-700 text-slate-300 border border-slate-600 px-2 py-0.5 rounded-full">
-                            ⏳ Memuat...
-                        </span>
-                    </h1>
-                    <p class="text-[11px] md:text-xs text-slate-300 mt-0.5">Terhubung ke Google Sheets & Google Drive</p>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <button id="btnSaveCloud" onclick="saveToGoogleSheets()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded shadow transition flex items-center gap-1">
-                        ☁️ Simpan ke Sheet
-                    </button>
-                    <button onclick="addNewRow()" class="px-3 py-1.5 bg-slate-600 hover:bg-slate-700 text-white text-xs font-semibold rounded shadow transition">
-                        ➕ Tambah
-                    </button>
-                    <button onclick="window.print()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded shadow transition flex items-center gap-1">
-                        🖨️ Cetak
-                    </button>
-                </div>
-            </div>
-
-            <!-- FORM BIAYA DASAR -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 pt-3 border-t border-slate-700 text-xs">
-                <div>
-                    <label class="block font-medium text-slate-300 mb-1">Bulan & Tahun Tagihan</label>
-                    <input type="text" id="bulanTahun" value="Oktober 2026" oninput="calculateAll()" class="w-full bg-slate-700 text-white px-2.5 py-1.5 rounded border border-slate-600 focus:outline-none focus:border-emerald-400">
-                </div>
-                <div>
-                    <label class="block font-medium text-slate-300 mb-1">Total Biaya Listrik PLN (Rp)</label>
-                    <input type="number" id="totalBiayaListrikPLN" value="408369" oninput="calculateAll()" class="w-full bg-slate-700 font-bold text-emerald-400 px-2.5 py-1.5 rounded border border-slate-600 focus:outline-none focus:border-emerald-400">
-                </div>
-                <div>
-                    <label class="block font-medium text-slate-300 mb-1">Biaya Sampah Default (Rp)</label>
-                    <input type="number" id="biayaSampahPerKamar" value="15000" oninput="applyDefaultSampahAll()" class="w-full bg-slate-700 text-white px-2.5 py-1.5 rounded border border-slate-600 focus:outline-none focus:border-emerald-400">
-                </div>
-            </div>
-
-            <!-- DETAIL BUKTI STRUK PLN -->
-            <details class="mt-3 text-xs text-slate-300 cursor-pointer">
-                <summary class="font-semibold text-emerald-400 hover:underline">📷 Upload Foto Struk PLN / Struk Digital</summary>
-                
-                <div class="mt-3 p-3 bg-slate-900 rounded-lg border border-slate-700 cursor-default space-y-3">
-                    <div class="flex items-center gap-4">
-                        <span class="font-semibold text-white">Tipe:</span>
-                        <label class="inline-flex items-center cursor-pointer gap-1">
-                            <input type="radio" name="strukType" value="image" checked onchange="toggleStrukType()" class="text-emerald-500">
-                            <span>Foto</span>
-                        </label>
-                        <label class="inline-flex items-center cursor-pointer gap-1">
-                            <input type="radio" name="strukType" value="digital" onchange="toggleStrukType()" class="text-emerald-500">
-                            <span>Digital</span>
-                        </label>
-                    </div>
-
-                    <div id="imageInputSection" class="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2 border-t border-slate-800">
-                        <div>
-                            <label class="block mb-1 text-slate-300 font-semibold">Pilih Foto Struk:</label>
-                            <input type="file" id="strukFileInput" accept="image/*" onchange="handleFileUpload(event)" class="w-full bg-slate-800 text-slate-200 p-1 rounded border border-slate-700 text-xs">
-                        </div>
-                        <div>
-                            <label class="block mb-1 text-slate-300 font-semibold">Atau Link Gambar:</label>
-                            <input type="text" id="strukUrlInput" placeholder="https://..." oninput="handleUrlInput(this.value)" class="w-full bg-slate-800 text-white p-1 rounded border border-slate-700 text-xs">
-                        </div>
-                    </div>
-
-                    <div id="digitalInputSection" class="hidden grid grid-cols-2 md:grid-cols-4 gap-2 pt-2 border-t border-slate-800 text-[11px]">
-                        <div><label class="block mb-0.5">IDPEL:</label><input type="text" id="strukIdpel" value="544300110334" oninput="updateStrukView()" class="w-full bg-slate-800 text-white p-1 rounded border border-slate-700"></div>
-                        <div><label class="block mb-0.5">Nama PLN:</label><input type="text" id="strukNama" value="SUHARTI" oninput="updateStrukView()" class="w-full bg-slate-800 text-white p-1 rounded border border-slate-700"></div>
-                        <div><label class="block mb-0.5">Tarif/Daya:</label><input type="text" id="strukTarif" value="R1 / 1300VA" oninput="updateStrukView()" class="w-full bg-slate-800 text-white p-1 rounded border border-slate-700"></div>
-                        <div><label class="block mb-0.5">Bulan/Thn:</label><input type="text" id="strukBulan" value="NOV26" oninput="updateStrukView()" class="w-full bg-slate-800 text-white p-1 rounded border border-slate-700"></div>
-                        <div><label class="block mb-0.5">Stand Meter:</label><input type="text" id="strukMeter" value="00015570-00015843" oninput="updateStrukView()" class="w-full bg-slate-800 text-white p-1 rounded border border-slate-700"></div>
-                        <div><label class="block mb-0.5">Admin Bank:</label><input type="number" id="strukAdmin" value="4500" oninput="updateStrukView()" class="w-full bg-slate-800 text-white p-1 rounded border border-slate-700"></div>
-                        <div><label class="block mb-0.5">No Ref:</label><input type="text" id="strukNoref" value="2MID21025FE365AA0E3C6EA1E4ABA665" oninput="updateStrukView()" class="w-full bg-slate-800 text-white p-1 rounded border border-slate-700"></div>
-                        <div><label class="block mb-0.5">Bank / Tgl:</label><input type="text" id="strukBank" value="BSI - A3 | 03-11-2026 17:03:22/CA" oninput="updateStrukView()" class="w-full bg-slate-800 text-white p-1 rounded border border-slate-700"></div>
-                    </div>
-                </div>
-            </details>
-        </div>
-
-        <!-- LAYOUT ATAS: TABEL REKAPITULASI -->
-        <div class="w-full">
-            <div class="text-center mb-2">
-                <h2 class="text-sm md:text-xl font-black uppercase tracking-wide text-black border-b-2 border-black inline-block pb-0.5">
-                    TAGIHAN LISTRIK DAN BIAYA TAMBAHAN
-                </h2>
-                <div class="text-left font-bold text-xs mt-1 flex items-center gap-2">
-                    <span>BULAN :</span>
-                    <span id="displayBulan" class="bg-yellow-300 px-2 py-0.5 rounded font-black text-black">Oktober 2026</span>
-                </div>
-            </div>
-
-            <!-- TABEL DENGAN SCROLL HORIZONTAL YANG AMAN DI HP -->
-            <div class="table-wrapper overflow-x-auto">
-                <table class="w-full min-w-[750px] border-collapse border-2 border-black text-[11px] md:text-xs">
-                    <thead>
-                        <tr class="bg-emerald-500 text-black font-bold text-center border-b-2 border-black">
-                            <th class="border border-black p-1 w-[3%]">No</th>
-                            <th class="border border-black p-1.5 w-[16%]">NAMA</th>
-                            <th class="border border-black p-1 bg-yellow-300 w-[6%]">JML ORG</th>
-                            <th class="border border-black p-1 w-[9%]">LISTRIK</th>
-                            <th class="border border-black p-1 w-[7%]">Exsouse</th>
-                            <th class="border border-black p-1 w-[9%]">Water</th>
-                            <th class="border border-black p-1 w-[6%]">TV</th>
-                            <th class="border border-black p-1 w-[7%]">Rice</th>
-                            <th class="border border-black p-1 w-[8%]">COOL CASE</th>
-                            <th class="border border-black p-1 w-[8%] bg-emerald-300">SAMPAH</th>
-                            <th class="border border-black p-1 w-[11%]">TOTAL</th>
-                            <th class="border border-black p-1 w-[11%]">PEMBULATAN</th>
-                            <th class="border border-black p-1 w-[28px] no-print">✕</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody"></tbody>
-                    <tfoot>
-                        <tr class="font-bold text-right bg-emerald-200 border-t-2 border-black">
-                            <td colspan="3" class="border border-black p-1 text-center">JUMLAH</td>
-                            <td id="sumListrik" class="border border-black p-1">Rp 0</td>
-                            <td id="sumExsouse" class="border border-black p-1">Rp 0</td>
-                            <td id="sumWater" class="border border-black p-1">Rp 0</td>
-                            <td id="sumTv" class="border border-black p-1">Rp 0</td>
-                            <td id="sumRice" class="border border-black p-1">Rp 0</td>
-                            <td id="sumCoolcase" class="border border-black p-1">Rp 0</td>
-                            <td id="sumSampah" class="border border-black p-1">Rp 0</td>
-                            <td id="sumTotal" class="border border-black p-1">Rp 0</td>
-                            <td id="sumPembulatan" class="border border-black p-1 bg-yellow-200">Rp 0</td>
-                            <td class="border border-black p-1 no-print"></td>
-                        </tr>
-                        <tr class="font-bold text-center bg-emerald-200 border-b-2 border-black">
-                            <td colspan="3" class="border border-black p-1"></td>
-                            <td colspan="6" id="sumTotalPeralatan" class="border border-black p-1 text-right font-semibold">Rp 0</td>
-                            <td colspan="4" class="border border-black p-1 bg-white border-none"></td>
-                        </tr>
-                    </tfoot>
-                </table>
+    <!-- NAVBAR -->
+    <nav class="bg-white/90 backdrop-blur-md fixed w-full z-20 top-0 border-b border-amber-100 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <a href="#" class="flex items-center gap-2">
+                <span class="text-2xl">🍰</span>
+                <span class="font-extrabold text-xl tracking-tight text-amber-900">Dapur Bunda Usti</span>
+            </a>
+            <div class="flex items-center gap-3 text-sm font-semibold">
+                <a href="#galeri" class="text-slate-600 hover:text-amber-700 transition hidden sm:inline">Galeri Kue</a>
+                <a href="#kontak" class="text-slate-600 hover:text-amber-700 transition hidden sm:inline">Kontak</a>
+                <a href="/listrik" class="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1 shadow-sm">
+                    ⚡ Portal Listrik
+                </a>
             </div>
         </div>
+    </nav>
 
-        <!-- LAYOUT BAWAH -->
-        <div class="print-bottom-layout flex flex-col md:flex-row justify-between items-start gap-4 mt-3">
-            <div class="flex-1 w-full text-xs">
-                <table class="border-2 border-black font-bold bg-white w-full">
-                    <tr>
-                        <td class="p-1.5 border border-black bg-gray-50">Listrik Di Hitung Per Jiwa</td>
-                        <td class="p-1.5 border border-black text-right min-w-[110px]" id="displayPerJiwa">Rp 0</td>
-                    </tr>
-                    <tr class="bg-emerald-400 text-black">
-                        <td class="p-1.5 border border-black font-black">Total Biaya Listrik</td>
-                        <td class="p-1.5 border border-black text-right font-black bg-yellow-300" id="displayTotalPLN">Rp 0</td>
-                    </tr>
-                </table>
-
-                <div class="mt-3">
-                    <h3 class="text-sm md:text-lg font-black uppercase tracking-wider text-black">TERIMA KASIH</h3>
-                </div>
-
-                <div class="mt-2 font-bold text-[10px] md:text-xs text-black uppercase border-t border-dashed border-gray-400 pt-1.5 max-w-md">
-                    Note: MOHON LAPORKAN BILA ADA PENAMBAHAN PENGGUNAAN ALAT ALAT LISTRIK
-                </div>
-            </div>
-
-            <!-- BAGIAN KANAN: BUKTI FOTO STRUK PLN -->
-            <div class="receipt-side-print w-full md:w-56 flex-shrink-0 flex justify-end">
-                <div id="receiptImageContainer" class="w-full border border-gray-300 p-1 bg-white shadow-sm rounded text-center">
-                    <img id="strukImagePreview" src="" alt="Bukti Struk PLN" class="struk-img-print w-full rounded object-contain max-h-[250px]">
-                </div>
-
-                <div id="receiptDigitalContainer" class="hidden receipt-box receipt-font bg-gray-50 border-2 border-gray-400 p-2 rounded text-slate-900 text-[9px] leading-tight shadow-sm w-full">
-                    <div class="text-center font-bold mb-1 pb-1 border-b border-dashed border-gray-400">STRUK PEMBAYARAN<br>TAGIHAN LISTRIK</div>
-                    <div class="space-y-0.5 mb-1.5">
-                        <div class="flex justify-between"><span>IDPEL</span><span>: <span id="rIdpel">544300110334</span></span></div>
-                        <div class="flex justify-between"><span>NAMA</span><span>: <span id="rNama">SUHARTI</span></span></div>
-                        <div class="flex justify-between"><span>TARIF/DAYA</span><span>: <span id="rTarif">R1 / 1300VA</span></span></div>
-                        <div class="flex justify-between"><span>BL/TH</span><span>: <span id="rBulan">NOV26</span></span></div>
-                        <div class="flex justify-between"><span>STAND METER</span><span>: <span id="rMeter">00015570-00015843</span></span></div>
-                        <div class="flex justify-between font-bold"><span>RP TAG PLN</span><span>: <span id="rRpTag">Rp.0</span></span></div>
-                        <div class="flex justify-between text-[8px] break-all"><span>NO REF</span><span>: <span id="rNoref">-</span></span></div>
-                    </div>
-                    <div class="text-center text-[8px] my-1 px-1 py-0.5 bg-gray-200/60 rounded">PLN menyatakan struk ini sebagai bukti pembayaran yang sah.</div>
-                    <div class="space-y-0.5 my-1 pt-1 border-t border-dashed border-gray-400">
-                        <div class="flex justify-between"><span>ADMIN BANK</span><span>: <span id="rAdmin">Rp.0</span></span></div>
-                        <div class="flex justify-between font-bold"><span>TOTAL BAYAR</span><span>: <span id="rTotal">Rp.0</span></span></div>
-                    </div>
-                    <div class="text-center my-1.5 font-bold">TERIMA KASIH<br><span id="rBankShort">BSI - A3</span></div>
-                    <div class="text-[8px] text-center text-gray-600 mb-1">"Informasi Hubungi Call Center 123"<br>Download PLN Mobile</div>
-                    <div class="text-center border-t border-dashed border-gray-400 pt-1 text-[8px]">
-                        <div class="font-bold">PT BANK SYARIAH INDONESIA</div>
-                        <div id="rTanggal">03-11-2026 17:03:22/CA</div>
-                    </div>
-                    <div class="mt-1.5 pt-1 border-t border-dashed border-gray-400 space-y-0.5 text-[8.5px]">
-                        <div class="text-center font-bold mb-0.5">------ DETAIL PEMBAYARAN ------</div>
-                        <div class="flex justify-between"><span>TOTAL TAGIHAN</span><span>: <span id="rDetailTagihan">Rp.0</span></span></div>
-                        <div class="flex justify-between"><span>TUNAI</span><span>: <span id="rTunai">Rp.0</span></span></div>
-                    </div>
-                    <div class="text-center font-bold mt-1 text-[9px]">-------- TERIMA KASIH --------</div>
-                </div>
+    <!-- HERO SECTION -->
+    <section class="pt-28 pb-16 px-4 bg-gradient-to-b from-amber-100/60 to-amber-50">
+        <div class="max-w-4xl mx-auto text-center">
+            <span class="bg-amber-200/80 text-amber-900 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                Freshly Baked Everyday 🎂
+            </span>
+            <h1 class="text-3xl md:text-5xl font-extrabold text-amber-950 mt-4 leading-tight">
+                Kelezatan Kue Rumahan Otentik khas Dapur Bunda Usti
+            </h1>
+            <p class="text-slate-600 mt-4 text-sm md:text-base max-w-2xl mx-auto">
+                Dibuat dengan bahan pilihan berkualitas, tanpa pengawet, higienis, dan rasa manis pas yang selalu bikin kangen keluarga.
+            </p>
+            <div class="mt-6 flex justify-center gap-3">
+                <a href="https://wa.me/6285715314443?text=Halo%20Dapur%20Bunda%20Usti,%20saya%20mau%20pesan%20kue" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl shadow-lg transition flex items-center gap-2 text-sm">
+                    💬 Pesan via WhatsApp
+                </a>
+                <a href="#galeri" class="bg-white hover:bg-amber-100 text-amber-900 font-semibold px-5 py-3 rounded-xl border border-amber-200 transition text-sm">
+                    Lihat Katalog
+                </a>
             </div>
         </div>
-    </div>
+    </section>
 
-    <script>
-        // =========================================================================
-        // URL WEB APP GOOGLE APPS SCRIPT ANDA
-        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzXleUNiaq1BoGUGkOW2lgNREiL83rvDt6PjinJ2wcVv2oV3aP3Q3KTXCqSsX_4bBUhHg/exec"; // Sesuaikan URL anda
-        // =========================================================================
+    <!-- GALERI PRODUK -->
+    <section id="galeri" class="py-12 px-4 max-w-6xl mx-auto">
+        <div class="text-center mb-10">
+            <h2 class="text-2xl md:text-3xl font-bold text-amber-950">Galeri Spesial DBU</h2>
+            <p class="text-xs md:text-sm text-slate-500 mt-1">Pilihan bolu & kue favorit keluarga</p>
+        </div>
 
-        const defaultData = [
-            { nama: "CASWITO", org: 1, exsouse: 0, water: 0, tv: 0, rice: 0, coolcase: 0, sampah: 15000 },
-            { nama: "Amoy/Mimin", org: 2, exsouse: 0, water: 0, tv: 0, rice: 10000, coolcase: 0, sampah: 15000 },
-            { nama: "MISRANTO", org: 1, exsouse: 0, water: 15000, tv: 10000, rice: 0, coolcase: 0, sampah: 15000 },
-            { nama: "FARUKI", org: 1, exsouse: 0, water: 15000, tv: 10000, rice: 0, coolcase: 0, sampah: 15000 },
-            { nama: "KRISTINE", org: 2, exsouse: 0, water: 0, tv: 0, rice: 0, coolcase: 0, sampah: 15000 },
-            { nama: "ANDES", org: 3, exsouse: 0, water: 0, tv: 10000, rice: 10000, coolcase: 30000, sampah: 15000 },
-            { nama: "", org: 0, exsouse: 0, water: 0, tv: 0, rice: 0, coolcase: 0, sampah: 15000 },
-            { nama: "", org: 0, exsouse: 0, water: 0, tv: 0, rice: 0, coolcase: 0, sampah: 0 }
-        ];
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            
+            <!-- KARTU KUE 1 -->
+            <div class="bg-white rounded-2xl overflow-hidden shadow-md border border-amber-100 hover:shadow-lg transition">
+                <img src="https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&auto=format&fit=crop&q=80" alt="Bolu Panggang Klasik" class="w-full h-48 object-cover">
+                <div class="p-4">
+                    <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">Best Seller</span>
+                    <h3 class="font-bold text-lg text-slate-800 mt-1">Bolu Panggang Klasik</h3>
+                    <p class="text-slate-500 text-xs mt-1">Tekstur lembut, aroma butter alami yang harum, cocok untuk teman minum teh.</p>
+                    <div class="mt-4 flex items-center justify-between">
+                        <span class="font-extrabold text-amber-900 text-sm">Rp 45.000</span>
+                        <a href="https://wa.me/6285715314443?text=Saya%20mau%20pesan%20Bolu%20Panggang%20Klasik" target="_blank" class="bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition border border-emerald-200">
+                            Pesan
+                        </a>
+                    </div>
+                </div>
+            </div>
 
-        let tenantData = JSON.parse(JSON.stringify(defaultData));
+            <!-- KARTU KUE 2 -->
+            <div class="bg-white rounded-2xl overflow-hidden shadow-md border border-amber-100 hover:shadow-lg transition">
+                <img src="https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=500&auto=format&fit=crop&q=80" alt="Brownies Fudgy Cokelat" class="w-full h-48 object-cover">
+                <div class="p-4">
+                    <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">Favorit</span>
+                    <h3 class="font-bold text-lg text-slate-800 mt-1">Brownies Fudgy Cokelat</h3>
+                    <p class="text-slate-500 text-xs mt-1">Shiny crust di luar, lumer dan nyokelat banget di dalam dengan topping melimpah.</p>
+                    <div class="mt-4 flex items-center justify-between">
+                        <span class="font-extrabold text-amber-900 text-sm">Rp 55.000</span>
+                        <a href="https://wa.me/6285715314443?text=Saya%20mau%20pesan%20Brownies%20Fudgy" target="_blank" class="bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition border border-emerald-200">
+                            Pesan
+                        </a>
+                    </div>
+                </div>
+            </div>
 
-        function setCloudBadge(text, colorClass) {
-            const badge = document.getElementById("cloudStatus");
-            if(badge) {
-                badge.innerText = text;
-                badge.className = `text-[10px] md:text-[11px] font-normal px-2 py-0.5 rounded-full border ${colorClass}`;
-            }
-        }
+            <!-- KARTU KUE 3 -->
+            <div class="bg-white rounded-2xl overflow-hidden shadow-md border border-amber-100 hover:shadow-lg transition">
+                <img src="https://images.unsplash.com/photo-1586985289688-ca3cf47d3e6e?w=500&auto=format&fit=crop&q=80" alt="Lapis Legit Spesial" class="w-full h-48 object-cover">
+                <div class="p-4">
+                    <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">Pre-Order</span>
+                    <h3 class="font-bold text-lg text-slate-800 mt-1">Lapis Legit Spesial</h3>
+                    <p class="text-slate-500 text-xs mt-1">Resep berlapis-lapis otentik dengan rempah manis khas yang legendaris.</p>
+                    <div class="mt-4 flex items-center justify-between">
+                        <span class="font-extrabold text-amber-900 text-sm">Rp 120.000</span>
+                        <a href="https://wa.me/6285715314443?text=Saya%20mau%20tanya%20Lapis%20Legit" target="_blank" class="bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition border border-emerald-200">
+                            Pesan
+                        </a>
+                    </div>
+                </div>
+            </div>
 
-        async function loadFromGoogleSheets() {
-            if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes("ContohUrlAnda")) {
-                setCloudBadge("⚠️ URL Apps Script belum dipasang", "bg-amber-600/30 text-amber-300 border-amber-500/40");
-                renderTable();
-                return;
-            }
+        </div>
+    </section>
 
-            try {
-                const res = await fetch(GAS_WEB_APP_URL);
-                const data = await res.json();
+    <!-- FOOTER & KONTAK -->
+    <footer id="kontak" class="bg-amber-950 text-amber-100 py-8 px-4 mt-12 text-center text-xs">
+        <div class="max-w-4xl mx-auto space-y-3">
+            <h3 class="font-bold text-base text-white">Dapur Bunda Usti (DBU)</h3>
+            <p class="text-amber-200/80">Menerima pesanan kue acara keluarga, arisan, syukuran, dan hantaran.</p>
+            <div class="pt-3 border-t border-amber-900 text-amber-400">
+                © 2026 Dapur Bunda Usti (dbu.web.id) — All rights reserved.
+            </div>
+        </div>
+    </footer>
 
-                if (data && data.status !== "empty" && Array.isArray(data.tenantData)) {
-                    document.getElementById("bulanTahun").value = data.bulanTahun || "Oktober 2026";
-                    document.getElementById("totalBiayaListrikPLN").value = data.totalBiayaListrikPLN || 0;
-                    document.getElementById("biayaSampahPerKamar").value = data.biayaSampahPerKamar || 15000;
-                    tenantData = data.tenantData;
-
-                    if (data.strukType) {
-                        const radio = document.querySelector(`input[name="strukType"][value="${data.strukType}"]`);
-                        if (radio) radio.checked = true;
-                    }
-                    if (data.strukImgSrc) document.getElementById("strukImagePreview").src = data.strukImgSrc;
-                    if (data.strukUrlInput) document.getElementById("strukUrlInput").value = data.strukUrlInput;
-
-                    if (data.digitalStruk) {
-                        document.getElementById("strukIdpel").value = data.digitalStruk.idpel || "";
-                        document.getElementById("strukNama").value = data.digitalStruk.nama || "";
-                        document.getElementById("strukTarif").value = data.digitalStruk.tarif || "";
-                        document.getElementById("strukBulan").value = data.digitalStruk.bulan || "";
-                        document.getElementById("strukMeter").value = data.digitalStruk.meter || "";
-                        document.getElementById("strukAdmin").value = data.digitalStruk.admin || 0;
-                        document.getElementById("strukNoref").value = data.digitalStruk.noref || "";
-                        document.getElementById("strukBank").value = data.digitalStruk.bank || "";
-                    }
-                    setCloudBadge("✓ Tersinkron Sheet", "bg-emerald-600/30 text-emerald-300 border-emerald-500/40");
-                } else {
-                    setCloudBadge("ℹ️ Data Baru (Kosong)", "bg-blue-600/30 text-blue-300 border-blue-500/40");
-                }
-            } catch (err) {
-                console.error(err);
-                setCloudBadge("❌ Gagal Muat Sheet", "bg-red-600/30 text-red-300 border-red-500/40");
-            }
-            toggleStrukType();
-            renderTable();
-        }
-
-        async function saveToGoogleSheets() {
-            if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes("ContohUrlAnda")) {
-                alert("URL Web App Google Apps Script belum dipasang!");
-                return;
-            }
-
-            const btn = document.getElementById("btnSaveCloud");
-            btn.disabled = true;
-            btn.innerText = "⏳ Menyimpan...";
-            setCloudBadge("⏳ Mengirim...", "bg-amber-600/30 text-amber-300 border-amber-500/40");
-
-            const payload = {
-                bulanTahun: document.getElementById("bulanTahun").value,
-                totalBiayaListrikPLN: parseFloat(document.getElementById("totalBiayaListrikPLN").value) || 0,
-                biayaSampahPerKamar: parseFloat(document.getElementById("biayaSampahPerKamar").value) || 0,
-                tenantData: tenantData,
-                strukType: document.querySelector('input[name="strukType"]:checked').value,
-                strukImgSrc: document.getElementById("strukImagePreview").src,
-                strukUrlInput: document.getElementById("strukUrlInput").value,
-                digitalStruk: {
-                    idpel: document.getElementById("strukIdpel").value,
-                    nama: document.getElementById("strukNama").value,
-                    tarif: document.getElementById("strukTarif").value,
-                    bulan: document.getElementById("strukBulan").value,
-                    meter: document.getElementById("strukMeter").value,
-                    admin: parseFloat(document.getElementById("strukAdmin").value) || 0,
-                    noref: document.getElementById("strukNoref").value,
-                    bank: document.getElementById("strukBank").value
-                }
-            };
-
-            try {
-                const response = await fetch(GAS_WEB_APP_URL, {
-                    method: "POST",
-                    body: JSON.stringify(payload)
-                });
-                const result = await response.json();
-
-                if (result.status === "success") {
-                    if (result.strukImgSrc) {
-                        document.getElementById("strukImagePreview").src = result.strukImgSrc;
-                    }
-                    setCloudBadge("✓ Tersimpan di Sheet", "bg-emerald-600/30 text-emerald-300 border-emerald-500/40");
-                    alert("Berhasil! Data & foto struk tersimpan di Google Sheets & Drive.");
-                } else {
-                    throw new Error(result.message || "Gagal menyimpan");
-                }
-            } catch (err) {
-                console.error(err);
-                setCloudBadge("❌ Gagal Simpan", "bg-red-600/30 text-red-300 border-red-500/40");
-                alert("Gagal menyimpan: " + err.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "☁️ Simpan ke Sheet";
-            }
-        }
-
-        function formatRupiah(n) { return (isNaN(n) || n === 0) ? "" : "Rp " + Math.round(n).toLocaleString('id-ID'); }
-        function formatRupiahFull(n) { return "Rp " + Math.round(n || 0).toLocaleString('id-ID'); }
-        function formatStrukRp(n) { return "Rp." + Math.round(n || 0).toLocaleString('id-ID'); }
-        function pembulatanKeAtasRibuan(val) { return (!val || val === 0) ? 0 : Math.ceil(val / 1000) * 1000; }
-
-        function renderTable() {
-            const tbody = document.getElementById("tableBody");
-            tbody.innerHTML = "";
-            tenantData.forEach((item, index) => {
-                const tr = document.createElement("tr");
-                tr.className = "hover:bg-slate-50 transition border-b border-black text-center";
-                tr.innerHTML = `
-                    <td class="border border-black p-0.5 font-semibold text-[10px] md:text-xs">${index + 1}</td>
-                    <td class="border border-black p-0.5 text-left"><input type="text" value="${item.nama}" oninput="updateRowData(${index}, 'nama', this.value)" class="w-full bg-transparent px-1 font-semibold text-[11px] md:text-xs focus:bg-yellow-100 focus:outline-none"></td>
-                    <td class="border border-black p-0.5 bg-yellow-100"><input type="number" min="0" value="${item.org || ''}" oninput="updateRowData(${index}, 'org', parseInt(this.value)||0)" class="w-full bg-transparent text-center font-bold text-[11px] md:text-xs focus:outline-none"></td>
-                    <td class="border border-black p-0.5 font-semibold text-right text-[10px] md:text-xs whitespace-nowrap" id="listrik_${index}">Rp 0</td>
-                    <td class="border border-black p-0.5 text-right"><input type="number" value="${item.exsouse || ''}" placeholder="0" oninput="updateRowData(${index}, 'exsouse', parseFloat(this.value)||0)" class="w-full bg-transparent text-right text-[10px] md:text-xs focus:bg-yellow-100 focus:outline-none"></td>
-                    <td class="border border-black p-0.5 text-right"><input type="number" value="${item.water || ''}" placeholder="0" oninput="updateRowData(${index}, 'water', parseFloat(this.value)||0)" class="w-full bg-transparent text-right text-[10px] md:text-xs focus:bg-yellow-100 focus:outline-none"></td>
-                    <td class="border border-black p-0.5 text-right"><input type="number" value="${item.tv || ''}" placeholder="0" oninput="updateRowData(${index}, 'tv', parseFloat(this.value)||0)" class="w-full bg-transparent text-right text-[10px] md:text-xs focus:bg-yellow-100 focus:outline-none"></td>
-                    <td class="border border-black p-0.5 text-right"><input type="number" value="${item.rice || ''}" placeholder="0" oninput="updateRowData(${index}, 'rice', parseFloat(this.value)||0)" class="w-full bg-transparent text-right text-[10px] md:text-xs focus:bg-yellow-100 focus:outline-none"></td>
-                    <td class="border border-black p-0.5 text-right"><input type="number" value="${item.coolcase || ''}" placeholder="0" oninput="updateRowData(${index}, 'coolcase', parseFloat(this.value)||0)" class="w-full bg-transparent text-right text-[10px] md:text-xs focus:bg-yellow-100 focus:outline-none"></td>
-                    <td class="border border-black p-0.5 text-right bg-emerald-50"><input type="number" value="${item.sampah || ''}" placeholder="0" oninput="updateRowData(${index}, 'sampah', parseFloat(this.value)||0)" class="w-full bg-transparent text-right font-semibold text-[10px] md:text-xs focus:bg-yellow-100 focus:outline-none"></td>
-                    <td class="border border-black p-0.5 font-semibold text-right text-[10px] md:text-xs whitespace-nowrap" id="total_${index}">Rp 0</td>
-                    <td class="border border-black p-0.5 font-bold text-right bg-yellow-50 text-[10px] md:text-xs whitespace-nowrap" id="pembulatan_${index}">Rp 0</td>
-                    <td class="border border-black p-0.5 no-print"><button onclick="deleteRow(${index})" class="text-red-600 font-bold px-1 text-xs">✕</button></td>
-                `;
-                tbody.appendChild(tr);
-            });
-            calculateAll();
-        }
-
-        function updateRowData(index, field, value) { tenantData[index][field] = value; calculateAll(); }
-        function addNewRow() {
-            const defaultSampah = parseFloat(document.getElementById("biayaSampahPerKamar").value) || 0;
-            tenantData.push({ nama: "", org: 1, exsouse: 0, water: 0, tv: 0, rice: 0, coolcase: 0, sampah: defaultSampah });
-            renderTable();
-        }
-        function deleteRow(index) { if (tenantData.length > 1) { tenantData.splice(index, 1); renderTable(); } }
-        function applyDefaultSampahAll() {
-            const defVal = parseFloat(document.getElementById("biayaSampahPerKamar").value) || 0;
-            tenantData.forEach(item => { if (item.nama.trim() !== "" || item.org > 0) item.sampah = defVal; });
-            renderTable();
-        }
-
-        function calculateAll() {
-            const totalPLN = parseFloat(document.getElementById("totalBiayaListrikPLN").value) || 0;
-            document.getElementById("displayBulan").innerText = document.getElementById("bulanTahun").value;
-
-            let totalBiayaAlat = 0, totalJiwa = 0;
-            let sumEx = 0, sumWa = 0, sumTvVal = 0, sumRi = 0, sumCool = 0;
-
-            tenantData.forEach(item => {
-                totalBiayaAlat += (item.exsouse || 0) + (item.water || 0) + (item.tv || 0) + (item.rice || 0) + (item.coolcase || 0);
-                totalJiwa += (item.org || 0);
-                sumEx += (item.exsouse || 0); sumWa += (item.water || 0); sumTvVal += (item.tv || 0);
-                sumRi += (item.rice || 0); sumCool += (item.coolcase || 0);
-            });
-
-            const listrikPerJiwa = totalJiwa > 0 ? ((totalPLN - totalBiayaAlat) / totalJiwa) : 0;
-            document.getElementById("displayPerJiwa").innerText = formatRupiahFull(listrikPerJiwa);
-            document.getElementById("displayTotalPLN").innerText = formatRupiahFull(totalPLN);
-
-            let totalSampahAll = 0, totalBiayaKamarAll = 0, totalPembulatanAll = 0, totalListrikBarisAll = 0;
-
-            tenantData.forEach((item, i) => {
-                const jmlOrg = item.org || 0;
-                const biayaListrikKamar = jmlOrg * listrikPerJiwa;
-                const totalAlatKamar = (item.exsouse || 0) + (item.water || 0) + (item.tv || 0) + (item.rice || 0) + (item.coolcase || 0);
-                const biayaSampah = parseFloat(item.sampah) || 0;
-                const totalMurni = biayaListrikKamar + totalAlatKamar + biayaSampah;
-                const totalBulat = pembulatanKeAtasRibuan(totalMurni);
-
-                totalListrikBarisAll += biayaListrikKamar; totalSampahAll += biayaSampah;
-                totalBiayaKamarAll += totalMurni; totalPembulatanAll += totalBulat;
-
-                document.getElementById(`listrik_${i}`).innerText = jmlOrg > 0 ? formatRupiahFull(biayaListrikKamar) : "";
-                document.getElementById(`total_${i}`).innerText = totalMurni > 0 ? formatRupiahFull(totalMurni) : "Rp -";
-                document.getElementById(`pembulatan_${i}`).innerText = totalBulat > 0 ? formatRupiahFull(totalBulat) : "Rp -";
-            });
-
-            document.getElementById("sumListrik").innerText = formatRupiahFull(totalListrikBarisAll);
-            document.getElementById("sumExsouse").innerText = formatRupiah(sumEx);
-            document.getElementById("sumWater").innerText = formatRupiah(sumWa);
-            document.getElementById("sumTv").innerText = formatRupiah(sumTvVal);
-            document.getElementById("sumRice").innerText = formatRupiah(sumRi);
-            document.getElementById("sumCoolcase").innerText = formatRupiah(sumCool);
-            document.getElementById("sumSampah").innerText = formatRupiahFull(totalSampahAll);
-            document.getElementById("sumTotal").innerText = formatRupiahFull(totalBiayaKamarAll);
-            document.getElementById("sumPembulatan").innerText = formatRupiahFull(totalPembulatanAll);
-            document.getElementById("sumTotalPeralatan").innerText = formatRupiahFull(totalBiayaAlat);
-
-            updateStrukView();
-        }
-
-        function toggleStrukType() {
-            const selectedType = document.querySelector('input[name="strukType"]:checked').value;
-            document.getElementById("imageInputSection").classList.toggle("hidden", selectedType !== "image");
-            document.getElementById("digitalInputSection").classList.toggle("hidden", selectedType === "image");
-            document.getElementById("receiptImageContainer").classList.toggle("hidden", selectedType !== "image");
-            document.getElementById("receiptDigitalContainer").classList.toggle("hidden", selectedType === "image");
-        }
-
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                    const canvas = document.createElement("canvas");
-                    const MAX_WIDTH = 700;
-                    let width = img.width, height = img.height;
-                    if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                    canvas.width = width; canvas.height = height;
-                    canvas.getContext("2d").drawImage(img, 0, 0, width, height);
-                    document.getElementById("strukImagePreview").src = canvas.toDataURL("image/jpeg", 0.8);
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function handleUrlInput(url) {
-            if (url.trim() !== "") document.getElementById("strukImagePreview").src = url;
-        }
-
-        function updateStrukView() {
-            const totalPLN = parseFloat(document.getElementById("totalBiayaListrikPLN").value) || 0;
-            const adminBank = parseFloat(document.getElementById("strukAdmin").value) || 0;
-            document.getElementById("rIdpel").innerText = document.getElementById("strukIdpel").value;
-            document.getElementById("rNama").innerText = document.getElementById("strukNama").value;
-            document.getElementById("rTarif").innerText = document.getElementById("strukTarif").value;
-            document.getElementById("rBulan").innerText = document.getElementById("strukBulan").value;
-            document.getElementById("rMeter").innerText = document.getElementById("strukMeter").value;
-            document.getElementById("rNoref").innerText = document.getElementById("strukNoref").value;
-            document.getElementById("rRpTag").innerText = formatStrukRp(totalPLN - adminBank);
-            document.getElementById("rAdmin").innerText = formatStrukRp(adminBank);
-            document.getElementById("rTotal").innerText = formatStrukRp(totalPLN);
-            document.getElementById("rDetailTagihan").innerText = formatStrukRp(totalPLN);
-            document.getElementById("rTunai").innerText = formatStrukRp(totalPLN);
-            const bankInfo = document.getElementById("strukBank").value.split("|");
-            document.getElementById("rBankShort").innerText = bankInfo[0] || "BSI - A3";
-            document.getElementById("rTanggal").innerText = bankInfo[1] || "";
-        }
-
-        loadFromGoogleSheets();
-    </script>
 </body>
 </html>
